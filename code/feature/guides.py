@@ -60,7 +60,14 @@ GUIDE_MAP: tuple[tuple[str, str, str, str], ...] = (
     ("HD", r"^gross margin$", "hd_gross_margin", "margin"),
     ("HD", r"^operating margin$", "hd_operating_margin", "margin"),
     ("DE", r"net income|earnings", "de_net_income", "level"),
-    ("DE", r"segment's operating margin", "de_ppa_operating_margin", "margin"),
+    # ⚡ Deere guides its biggest segment's sales by name — "precision ag net sales ... down 5 % for
+    # fiscal year 2026" — which is the direct driver of that segment's profit, a submitted target.
+    ("DE", r"precision ag net sales", "de_ppa_net_sales", "growth"),
+    # ⛔ **`segment's operating margin` is deliberately NOT bound.** Deere states three segment
+    # margins in the same release (Production & Precision Ag, Small Ag & Turf, Construction &
+    # Forestry) and the period field comes back empty on all of them, so nothing in the row says
+    # which segment it belongs to. Binding it would attach another segment's margin to P&PA — the
+    # same class of error as reading a GAAP margin into an adjusted target, and just as invisible.
     ("LSE:HAS", r"operating profit", "has_pre_exc_operating_profit", "level"),
 )
 

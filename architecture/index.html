@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sloppe Street — architecture</title>
+<style>
+  :root{--ink:#14171a;--mute:#5c6670;--rule:#e2e6ea;--bg:#fbfcfd;--accent:#1a5fb4;--warn:#a33;--good:#1a7f4b;--code:#f3f5f7}
+  *{box-sizing:border-box}
+  body{margin:0;padding:0 20px 80px;background:var(--bg);color:var(--ink);
+       font:16px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+  .wrap{max-width:900px;margin:0 auto}
+  header{padding:52px 0 26px;border-bottom:2px solid var(--ink)}
+  h1{margin:0 0 6px;font-size:31px;letter-spacing:-.02em}
+  .sub{color:var(--mute);font-size:16px;margin:0}
+  h2{margin:44px 0 12px;font-size:21px;letter-spacing:-.01em;padding-bottom:6px;border-bottom:1px solid var(--rule)}
+  h3{margin:26px 0 8px;font-size:16.5px}
+  p{margin:11px 0}
+  code{background:var(--code);padding:1px 5px;border-radius:3px;font-size:13.5px;
+       font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  pre{background:var(--code);padding:13px 15px;border-radius:6px;overflow-x:auto;font-size:13px;
+      line-height:1.5;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;border:1px solid var(--rule)}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:14.2px}
+  th,td{text-align:left;padding:6px 9px;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{font-weight:600;color:var(--mute);font-size:12.5px;text-transform:uppercase;letter-spacing:.04em}
+  td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;
+            font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .win{color:var(--good);font-weight:600}
+  .bad{color:var(--warn)}
+  .note{border-left:3px solid var(--accent);background:#fff;padding:11px 15px;margin:16px 0;border-radius:0 5px 5px 0}
+  .note.warn{border-left-color:var(--warn)}
+  .note.good{border-left-color:var(--good)}
+  .note p:first-child{margin-top:0}.note p:last-child{margin-bottom:0}
+  .lede{font-size:17.5px;color:#2a3138}
+  ul{margin:10px 0;padding-left:22px}li{margin:5px 0}
+  figure{margin:22px 0}
+  figcaption{color:var(--mute);font-size:13px;margin-top:8px}
+  footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--rule);color:var(--mute);font-size:13.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Sloppe Street</h1>
+  <p class="sub">A forecasting agent for <em>Agents vs Wall Street</em> — twelve reported figures across
+  Home Depot, Analog Devices, Hays plc and Deere &amp; Company.</p>
+</header>
+
+<p class="lede">The system reads 1,139 filings into a verbatim store, extracts one row per stated
+fact, reconciles those facts into a period-keyed panel, builds several independent point forecasts
+("anchors") for every target, and then decides <em>which anchor to trust</em> by backtesting that
+decision on the competition's own scoring rule.</p>
+
+<p>The central design claim is that with four companies and ~1,300 usable observations, the winnable
+problem is not "learn the number" but "know which of several defensible estimates to submit". Every
+parameter that could have been chosen by taste is instead chosen by walk-forward evidence, and
+several plausible ideas were measured and rejected — those are listed in
+<a href="#honesty">What was tried and abandoned</a>.</p>
+
+<h2>Architecture</h2>
+
+<figure>
+<svg viewBox="0 0 880 400" width="100%" role="img" aria-label="Four-layer pipeline diagram">
+  <defs>
+    <marker id="a" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#5c6670"/>
+    </marker>
+  </defs>
+  <g font-family="-apple-system,Helvetica,Arial" font-size="12.5">
+    <rect x="8" y="12" width="176" height="376" rx="7" fill="#fff" stroke="#cfd6dd"/>
+    <rect x="200" y="12" width="176" height="376" rx="7" fill="#fff" stroke="#cfd6dd"/>
+    <rect x="392" y="12" width="176" height="376" rx="7" fill="#fff" stroke="#cfd6dd"/>
+    <rect x="584" y="12" width="288" height="376" rx="7" fill="#fff" stroke="#cfd6dd"/>
+
+    <text x="96" y="34" text-anchor="middle" font-weight="700" fill="#14171a">raw/</text>
+    <text x="288" y="34" text-anchor="middle" font-weight="700" fill="#14171a">extracted/</text>
+    <text x="480" y="34" text-anchor="middle" font-weight="700" fill="#14171a">feature/</text>
+    <text x="728" y="34" text-anchor="middle" font-weight="700" fill="#14171a">model/</text>
+
+    <text x="96" y="50" text-anchor="middle" fill="#5c6670" font-size="11">verbatim bytes</text>
+    <text x="288" y="50" text-anchor="middle" fill="#5c6670" font-size="11">stated facts</text>
+    <text x="480" y="50" text-anchor="middle" fill="#5c6670" font-size="11">joins + anchors</text>
+    <text x="728" y="50" text-anchor="middle" fill="#5c6670" font-size="11">decide, then submit</text>
+
+    <g fill="#2a3138">
+      <text x="22" y="78">corpus · 1,139 docs</text>
+      <text x="22" y="99">SEC facts + exhibits</text>
+      <text x="22" y="120">stockanalysis</text>
+      <text x="22" y="141">yahoo · alpaca</text>
+      <text x="22" y="162">FRED · ONS/Eurostat</text>
+      <text x="22" y="183">nasdaq</text>
+      <text x="22" y="215" fill="#5c6670" font-size="11">9 providers, gzip+hash,</text>
+      <text x="22" y="231" fill="#5c6670" font-size="11">as-of stamped, never</text>
+      <text x="22" y="247" fill="#5c6670" font-size="11">rewritten</text>
+
+      <text x="214" y="78">table cells + columns</text>
+      <text x="214" y="99">statement facts</text>
+      <text x="214" y="120">prose facts</text>
+      <text x="214" y="141">guidance ranges</text>
+      <text x="214" y="162">company consensus</text>
+      <text x="214" y="183">macro observations</text>
+      <text x="214" y="215" fill="#5c6670" font-size="11">one row per fact a</text>
+      <text x="214" y="231" fill="#5c6670" font-size="11">document actually</text>
+      <text x="214" y="247" fill="#5c6670" font-size="11">states — no fills</text>
+
+      <text x="406" y="78">period resolver</text>
+      <text x="406" y="99">reconciled panel</text>
+      <text x="406" y="120">guides → periods</text>
+      <text x="406" y="141">seasonality (PIT)</text>
+      <text x="406" y="162">conservatism (PIT)</text>
+      <text x="406" y="183">training matrix</text>
+      <text x="406" y="215" fill="#5c6670" font-size="11">1,327 rows × 101 cols</text>
+      <text x="406" y="231" fill="#5c6670" font-size="11">every column knowable</text>
+      <text x="406" y="247" fill="#5c6670" font-size="11">before its period</text>
+
+      <text x="598" y="78">dataset — (row, anchor) residuals</text>
+      <text x="598" y="99">train — 7-fold walk-forward</text>
+      <text x="598" y="120">predict — select + guard</text>
+      <text x="598" y="141">workbooks — 4 .xlsx</text>
+      <text x="598" y="173" fill="#5c6670" font-size="11">4,604 examples · 63 features</text>
+      <text x="598" y="189" fill="#5c6670" font-size="11">LightGBM (objective=l1) used to</text>
+      <text x="598" y="205" fill="#5c6670" font-size="11">test whether a correction helps</text>
+    </g>
+
+    <line x1="184" y1="130" x2="198" y2="130" stroke="#5c6670" marker-end="url(#a)"/>
+    <line x1="376" y1="130" x2="390" y2="130" stroke="#5c6670" marker-end="url(#a)"/>
+    <line x1="568" y1="130" x2="582" y2="130" stroke="#5c6670" marker-end="url(#a)"/>
+
+    <rect x="598" y="228" width="260" height="146" rx="6" fill="#f7f9fb" stroke="#cfd6dd"/>
+    <text x="612" y="250" font-weight="700" fill="#14171a" font-size="12">checks that can stop the run</text>
+    <g fill="#2a3138" font-size="11.5">
+      <text x="612" y="272">16 hand-read ground truths — 16/16</text>
+      <text x="612" y="292">look-ahead audit — 6/6 clean</text>
+      <text x="612" y="312">Σ4 quarters = stated year</text>
+      <text x="612" y="332">containment: FY ≥ any part of it</text>
+      <text x="612" y="352">52/53-week calendar, year-end to year-end</text>
+      <text x="612" y="370" fill="#5c6670">workbook labels matched exactly</text>
+    </g>
+
+    <text x="8" y="399" fill="#5c6670" font-size="11">network ────────────────▶│ everything right of here is a pure function of banked bytes</text>
+  </g>
+</svg>
+<figcaption>Only <code>fetch</code> touches the network. A rerun of the other three layers reproduces
+the same twelve numbers from bytes already on disk.</figcaption>
+</figure>
+
+<h2>How a forecast is chosen</h2>
+
+<p>Each target carries several <strong>anchors</strong> — independent, parameter-free point
+forecasts of the same quantity:</p>
+
+<table>
+<tr><th>anchor</th><th>what it is</th></tr>
+<tr><td><code>guide_mid</code></td><td>the midpoint of the filer's own stated range for exactly this period</td></tr>
+<tr><td><code>seasonal_last</code> / <code>seasonal_recent</code></td><td>an annual guide split by the quarter's measured share of the year</td></tr>
+<tr><td><code>companion_lag1</code></td><td>a guided sibling line times the historical ratio between them</td></tr>
+<tr><td><code>stated_growth</code></td><td>a level the filer never states, from a growth rate it does</td></tr>
+<tr><td><code>yoy_carry</code>, <code>prior_year</code>, <code>lag1</code>, <code>runrate_seasonal</code></td><td>history-only baselines, available almost everywhere</td></tr>
+</table>
+
+<p>The model layer reshapes this into one training example per <em>(row, anchor)</em> pair and learns
+the <strong>residual</strong> — <code>y/anchor − 1</code> for money and per-share lines,
+<code>y − anchor</code> in points for rates. Pooling this way turns 1,327 rows into 4,604 examples and
+lets a Deere observation inform a Home Depot one, which is the only way to get a usable sample size
+from four companies.</p>
+
+<p>Ten strategies were then run walk-forward over seven expanding folds, cut on the date each figure
+was <em>published</em>, and scored on the competition's own rule:</p>
+
+<table>
+<tr><th>strategy</th><th class="n">median norm. error</th><th class="n">mean score</th><th></th></tr>
+<tr><td><strong>best anchor per metric, + guide-bias</strong></td><td class="n">0.0947</td><td class="n"><strong>3.745</strong></td><td class="win">adopted</td></tr>
+<tr><td>best anchor per metric, raw</td><td class="n">0.0948</td><td class="n">3.783</td><td></td></tr>
+<tr><td>best anchor, pooled dispersion</td><td class="n">0.0944</td><td class="n">3.801</td><td></td></tr>
+<tr><td>inverse-variance blend of all anchors</td><td class="n">0.0968</td><td class="n">3.885</td><td></td></tr>
+<tr><td>best anchor, GBM-corrected</td><td class="n">0.1130</td><td class="n">4.117</td><td class="bad">rejected</td></tr>
+<tr><td>blend of all, GBM-corrected</td><td class="n">0.1170</td><td class="n">4.082</td><td class="bad">rejected</td></tr>
+</table>
+
+<div class="note good">
+<p><strong>Selection beat correction — and the gradient-boosted model is how we know.</strong>
+Pooled over every anchor, LightGBM is clearly better than leaving anchors alone (median normalised
+error <strong>0.126</strong> vs <strong>0.150</strong>): it repairs a naive momentum carry by 1.47×
+and last-year's-quarter by 1.45×. But those are the anchors a row is <em>not</em> forecast from. On
+the anchors that actually win selection it is harmful — the seasonal split degrades from
+<strong>0.064 → 0.102</strong> and the guide midpoint from <strong>0.083 → 0.160</strong>. A good
+anchor is already calibrated. The model earns its place in the repository by establishing that,
+not by moving a submitted number.</p>
+</div>
+
+<h3>The one deliberate deviation</h3>
+
+<p>Submitting a guide midpoint scores about 1.0 by construction, because that is where the sell side
+also sits. Filers systematically clear their own guides — ADI has beaten its revenue guide in 88% of
+34 observations by a median 2.5% — so the midpoint is shifted by that measured median. Paired
+against the un-shifted rule on target metrics: <strong>t = −2.21</strong>, 21 rows improved against
+8 worsened. Shifting <em>every</em> anchor the same way is <em>not</em> significant (t = −1.18), so
+only the guide is shifted.</p>
+
+<h2>The twelve submitted numbers</h2>
+
+<table>
+<tr><th>company · metric</th><th class="n">forecast</th><th class="n">prior yr</th><th>anchor used</th><th class="n">σ</th></tr>
+<tr><td>ADI · Revenue (USDm)</td><td class="n">4,008.0</td><td class="n">2,880.4</td><td>guide midpoint + beat</td><td class="n">0.031</td></tr>
+<tr><td>ADI · Adjusted diluted EPS</td><td class="n">3.39</td><td class="n">1.81</td><td>guide midpoint + beat</td><td class="n">0.055</td></tr>
+<tr><td>ADI · Adjusted gross margin (%)</td><td class="n">73.0</td><td class="n">69.2</td><td>last reported quarter</td><td class="n">1.00pp</td></tr>
+<tr><td>DE · Worldwide net sales &amp; revenues (USDm)</td><td class="n">12,588.6</td><td class="n">12,018.0</td><td>year-on-year carry</td><td class="n">0.091</td></tr>
+<tr><td>DE · Diluted EPS (GAAP)</td><td class="n">4.49</td><td class="n">4.75</td><td>FY net-income guide ÷ shares</td><td class="n">0.225</td></tr>
+<tr><td>DE · Production &amp; Precision Ag op. profit (USDm)</td><td class="n">551.0</td><td class="n">580.0</td><td>segment sales guide × margin</td><td class="n">0.195</td></tr>
+<tr><td>HAS · Net fees (GBPm)</td><td class="n">904.3</td><td class="n">972.4</td><td>stated quarterly growth chain</td><td class="n">0.011</td></tr>
+<tr><td>HAS · Pre-exceptional basic EPS (GBp)</td><td class="n">1.31</td><td class="n">1.31</td><td>prior year</td><td class="n">0.115</td></tr>
+<tr><td>HAS · Pre-exceptional operating profit (GBPm)</td><td class="n">45.6</td><td class="n">45.6</td><td>prior year</td><td class="n">0.115</td></tr>
+<tr><td>HD · Net sales (USDm)</td><td class="n">47,082.6</td><td class="n">45,277.0</td><td>FY guide × seasonal share</td><td class="n">0.015</td></tr>
+<tr><td>HD · Adjusted diluted EPS</td><td class="n">4.68</td><td class="n">4.68</td><td>prior year</td><td class="n">0.033</td></tr>
+<tr><td>HD · Comparable sales (%)</td><td class="n">1.0</td><td class="n">1.0</td><td>FY comps guide, direct</td><td class="n">1.55pp</td></tr>
+</table>
+
+<p>σ is the median absolute residual that anchor type has produced on that metric's own history —
+the model's own statement of how much to trust each number. It is the single most useful column
+here: the five tightest are forecasts we would defend; the four widest are named as weak below.</p>
+
+<h2>Validation and data integrity</h2>
+
+<p>Every check is arithmetic on the filers' own numbers, so none needs a judgement call.</p>
+
+<table>
+<tr><th>check</th><th>result</th></tr>
+<tr><td>16 values hand-read from filings vs the panel</td><td class="win">16/16 match</td></tr>
+<tr><td>Look-ahead: nothing published after the deadline reaches any row</td><td class="win">6/6 clean</td></tr>
+<tr><td>Σ four quarters = the filer's own stated annual total</td><td>133/153 reconcile exactly</td></tr>
+<tr><td>Containment: a period is never smaller than a period inside it</td><td>7 values reinstated from the candidate set</td></tr>
+<tr><td>52/53-week calendar, measured year-end to year-end</td><td>6 long years found, correct ~6-year cadence</td></tr>
+<tr><td>Workbook metric labels matched exactly, units asserted</td><td class="win">12/12 cells written</td></tr>
+</table>
+
+<p>Two of these changed submitted numbers. The additivity identity exposed a fiscal year mislabelled
+by twelve months — Home Depot's <code>2025-02-02</code> quarter was filed as FY2025Q4 by one document
+and FY2024Q4 by another, and the contested label won, so one year lost a quarter and the next carried
+two. The containment rule found a Hays annual net-fee figure of £534.2m against a first half of
+£651.9m, with the correct £1,189.4m sitting in the candidate set, outvoted three to one.</p>
+
+<h2 id="honesty">What was tried and abandoned</h2>
+
+<div class="note warn">
+<p><strong>The most serious mistake, and the one that shaped the architecture.</strong> An earlier
+version computed forecasts directly in the feature layer as hand-written bridges, with constants
+like a four-quarter averaging window and a bare <code>× 0.97</code> in the source. Those constants
+were tuned by watching the printed value move toward the sell-side consensus — which is fitting on
+the benchmark being competed against. Because such a bridge produces exactly one number for one
+period, it has no history and <em>no backtest can ever catch it</em>. The whole layer was rebuilt so
+that every rule is computable at every past period and has to earn its place out of sample. The
+feature layer now emits series only; every parameter lives in the model layer.</p>
+</div>
+
+<p>Measured and rejected on evidence, rather than dropped on taste:</p>
+
+<ul>
+<li><strong>GBM correction of the chosen anchor</strong> — helps pooled, harms the anchors actually
+used (0.095 → 0.113 mean score 3.783 → 4.117).</li>
+<li><strong>Blending anchors</strong> by inverse variance — anchor quality varies far more than
+blending can absorb (3.885 vs 3.783).</li>
+<li><strong>Shrinking the chosen anchor toward the anchor consensus</strong> — tightens the upper
+quartile (0.341 vs 0.363) but costs mean score (3.824 vs 3.783), and mean score is the prize.</li>
+<li><strong>A companion-residual anchor</strong> (guide minus year-to-date, split by remaining
+quarters). Accounting-wise this is the more correct bridge and it was expected to win; measured, it
+is worse (0.274 vs 0.220) because a residual is a difference of two large numbers and amplifies any
+error in the guide.</li>
+<li><strong>A macro-regression anchor for HD comparable sales</strong> from the building-materials
+retail tape. Correlation is +0.93, but its median residual is 2.39pp against the existing anchor's
+1.55pp — the correlation is carried by pandemic-era extremes and adds noise in the current regime.</li>
+<li><strong>ADI gross margin regressed on revenue scale</strong> — full history gives 4.86pp. A
+recent-window fit looks far better, but that residual is in-sample and choosing the window by fit is
+the same error as the bridges above.</li>
+<li><strong>Deere's <code>segment's operating margin</code> guidance</strong> — deliberately not
+bound. Deere states three segments' margins in one release with an empty period field, so nothing in
+the row says which segment it belongs to.</li>
+</ul>
+
+<h2>Known weaknesses</h2>
+
+<ul>
+<li><strong>Four of twelve rest on weak anchors.</strong> HD comparable sales (σ 1.55pp) and ADI
+adjusted gross margin (σ 1.00pp) are measured against a 0.5pp scoring floor, so a poor score there
+is likely whatever method is used — neither is guided by its filer. Deere's diluted EPS (σ 0.225)
+reaches its target through a companion line rather than a guide.</li>
+<li><strong>Hays' tightest number rests on three observations.</strong> The stated-growth anchor
+shows σ 0.011, but that is a median over three historical years, one of which is 62% wrong because
+its base year is still unreliable. The reasoning is near-arithmetic and we trust it; the
+<em>measured</em> confidence is thinner than the number suggests.</li>
+<li><strong>20 of 153 additivity pairs still fail.</strong> Deere's pre-2018 quarters are
+contaminated with year-to-date columns. Those years are dropped from seasonality but still feed lag
+columns on old training rows.</li>
+<li><strong>43 stated guides could not be resolved to a period</strong> and are refused rather than
+guessed at.</li>
+<li><strong>Seven of twelve deviate materially from the available benchmark.</strong> That is the
+only way to score below 1.0, but the loss caps at 5.0 while the floor is 0 — a bad miss costs roughly
+eight times what an equal gain earns.</li>
+</ul>
+
+<h2>Reproducing the run</h2>
+
+<pre>git clone &lt;this repo&gt; &amp;&amp; cd &lt;repo&gt;
+git clone https://github.com/kernlai/agents-vs-wall-street-starter.git starter   # corpus, not redistributed
+python -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt
+brew install libomp            # LightGBM's OpenMP runtime, macOS only
+
+PYTHONPATH=. .venv/bin/python -m code.run all      # fetch → extract → feature → model</pre>
+
+<p>The final command writes <code>submission/ADI-FY2026Q3.xlsx</code>,
+<code>DE-FY2026Q3.xlsx</code>, <code>HAS-FY2026.xlsx</code> and <code>HD-FY2026Q2.xlsx</code>, and
+prints each cell it wrote after reading the saved files back from disk. A timestamped clear-run log
+is in <code>logs/</code>.</p>
+
+<p>The document corpus is third-party material licensed to the organisers and is not redistributed
+in this repository; <code>data/</code> is likewise excluded because it holds verbatim copies of those
+filings, and is fully regenerated by the command above.</p>
+
+<footer>
+Built during Agents vs Wall Street, 16 August 2026. Pre-existing generic components (a sentence
+grammar, a guidance-range grammar and a <code>devalue</code> payload decoder) are declared in
+<code>entry.json</code> and documented in <code>code/vendor/README.md</code>; everything
+company-specific was built during the event.
+</footer>
+
+</div>
+</body>
+</html>

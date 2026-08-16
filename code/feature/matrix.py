@@ -180,9 +180,14 @@ def _macro_columns(ticker: str, series: dict, ends: dict, key: tuple, as_of: str
     `n_months` travels alongside so the model can discount a partially-observed quarter rather than
     treat it as a full one.
     """
+    # ⚠️ A target period has no *learned* end date — the filer has not reported it — so a lookup
+    # that only consults the anchors silently returns nothing for exactly the twelve rows being
+    # predicted, while every training row gets its macro columns. That is train/serve skew, and it
+    # is invisible because the columns are simply null. The projected end is used instead.
     end = ends.get(key)
     if not end:
         return {}
+
     cutoff = min(end, as_of)
     start = f"{int(end[:4])}-{max(1, int(end[5:7]) - 2):02d}-01"
     out: dict = {}
@@ -270,6 +275,10 @@ def build() -> list[dict]:
             anchor["period_end"]
         if anchor["fiscal_period"] == "Q4":       # a fiscal year ends when its fourth quarter does
             ends[(anchor["ticker"], anchor["fiscal_year"], "FY")] = anchor["period_end"]
+    for key in _target_keys():                    # the unreported periods, from their projected end
+        metric = M.REGISTRY.get(key[0])
+        if metric and (metric.ticker, key[1], key[2]) not in ends:
+            ends[(metric.ticker, key[1], key[2])] = _projected_end(metric.ticker)
 
     macro: dict[str, list] = defaultdict(list)
     for lane in ("fred_observations", "labour_observations"):
@@ -564,7 +573,10 @@ def _annual_guide_columns(name: str, metric, fiscal_year: int, fiscal_period: st
 #: relationships, not fitted choices — which is why they belong to the feature layer.
 COMPANION: dict[str, str] = {
     "de_diluted_eps": "de_net_income",
-    "de_ppa_operating_profit": "de_net_income",
+    # ⚡ A segment's profit is driven by that segment's sales, not by the whole company's earnings.
+    # Deere guides `precision ag net sales` by name, so this link is one stated growth rate and one
+    # measured segment margin — a far shorter chain than routing through group net income.
+    "de_ppa_operating_profit": "de_ppa_net_sales",
     "de_net_sales_and_revenues": "de_net_income",
     "adi_adj_gross_margin": "adi_adj_operating_margin",
     "adi_adj_operating_income": "adi_revenue",
@@ -679,6 +691,14 @@ def _companion_columns(name: str, metric, fiscal_year: int, fiscal_period: str,
         "anchor_companion_residual": residual_anchor,
     })
     return out
+
+
+def _projected_end(ticker: str) -> str | None:
+    """When the target period is expected to end, for a period the filer has not reported yet."""
+    for row in store.read(config.EXTRACTED / "target_periods.parquet"):
+        if row["ticker"] == ticker:
+            return row["projected_period_end"]
+    return None
 
 
 def _target_keys() -> list[tuple[str, int, str]]:
