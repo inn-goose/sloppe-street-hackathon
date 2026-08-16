@@ -556,8 +556,11 @@ def _repair_containment(rows: list[dict]) -> list[dict]:
         metric = M.REGISTRY.get(row["metric"])
         # ⚠️ **Only a flow is contained by its parts.** A diluted share count is a period *average*,
         # so a year below its own busiest quarter is entirely normal — including `shares_m` here
-        # raised 35 false violations across ADI, Deere and HD before this line existed.
-        if not inner_names or metric is None or metric.unit != "currency_m":
+        # raised 35 false violations across ADI, Deere and HD before this line existed. Per-share
+        # figures *are* contained: annual EPS is not the sum of four quarters exactly, because the
+        # share count moves, but it cannot be smaller than one of them. Home Depot's FY2025 adjusted
+        # EPS is filed as **3.56** against a Q2 of **4.68** — one quarter's figure on an annual row.
+        if not inner_names or metric is None or metric.unit not in {"currency_m", "per_share"}:
             continue
         inner = [by_key[(row["metric"], row["fiscal_year"], p)] for p in inner_names
                  if (row["metric"], row["fiscal_year"], p) in by_key]

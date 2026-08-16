@@ -656,12 +656,27 @@ def _companion_columns(name: str, metric, fiscal_year: int, fiscal_period: str,
             return level * share if share is not None else None
         return level
 
+    # ⚡ **When the year is half over, the guide's residual is worth more than its seasonal share.**
+    # Deere guides full-year net income and has already reported H1; splitting the *whole* guide by
+    # a Q3 share throws that away. The identity is `guide − banked = what is left`, and the quarter
+    # takes its share of what is left. On the FY2026 Q3 target the two routes differ by 4.3 %.
+    residual_anchor = None
+    if implied is not None and annual and fiscal_period != "FY" and lag1 is not None:
+        index = _QIDX[fiscal_period]
+        banked = [cells[(name, fiscal_year, q)]["value"] for q in QUARTERS[:index - 1]
+                  if (name, fiscal_year, q) in cells]
+        remaining = row.get("season_share_of_remaining_pit")
+        annual_level = implied * lag1 if is_ratio else implied + lag1
+        if len(banked) == index - 1 and remaining is not None and metric.unit in ADDITIVE_UNITS:
+            residual_anchor = (annual_level - sum(banked)) * remaining
+
     out.update({
         "companion_guide_mid": implied,
         "gap_to_companion_lag1": lag1, "gap_to_companion_mean3": mean3,
         "gap_is_ratio": int(is_ratio),
         "anchor_companion_lag1": apply(lag1),
         "anchor_companion_mean3": apply(mean3),
+        "anchor_companion_residual": residual_anchor,
     })
     return out
 

@@ -1,0 +1,601 @@
+clear run — 2026-08-16T15:14:54Z UTC
+commit: f71e9c0
+python: Python 3.14.6
+command: python -m code.run feature && python -m code.run model
+
+
+=== feature: periods =====================================================
+feature/fiscal_weeks.parquet 49 (ticker, year) calendars, 6 of 53 weeks: ADI FY2018, ADI FY2024, DE FY2019, DE FY2025, HD FY2018, HD FY2024
+feature/fiscal_periods.parquet 169 learned anchors (6 with a split vote)
+  2 refused by the quarter-spacing invariant:
+    ADI      2023-06-30  62d from 2023-04-29 (1 vote vs 2)
+    DE       2023-08-29  30d from 2023-07-30 (1 vote vs 2)
+  HD        46 anchors  FY2014Q4 (2015-02-01) .. FY2026Q1 (2026-05-03)
+           quarter-to-quarter gaps: [(91, 43), (98, 2)]
+  ADI       46 anchors  FY2015Q1 (2015-01-31) .. FY2026Q2 (2026-05-02)
+           quarter-to-quarter gaps: [(91, 43), (98, 2)]
+  LSE:HAS   33 anchors  FY2015Q4 (2015-06-30) .. FY2026Q4 (2026-06-30)
+           quarter-to-quarter gaps: [(92, 14), (91, 7), (90, 6), (365, 2)]
+  DE        44 anchors  FY2015Q1 (2015-01-31) .. FY2026Q2 (2026-05-03)
+           quarter-to-quarter gaps: [(91, 35), (92, 2), (98, 2), (89, 1)]
+
+  the four target periods, resolved from their projected end dates:
+    HD       FY2026Q2   2026-08-02  -> FY2026Q2    [offset]
+    ADI      FY2026Q3   2026-08-01  -> FY2026Q3    [offset]
+    LSE:HAS  FY2026     2026-06-30  -> FY2026FY    [anchored]
+    DE       FY2026Q3   2026-08-02  -> FY2026Q3    [offset]
+  (0.2s)
+
+=== feature: panel =======================================================
+feature/metric_panel.parquet 1,755 (metric, period) keys  6,283 witnesses  480 keys with >1% lane disagreement
+
+target                                       periods   wit  lanes      latest  spread
+------------------------------------------------------------------------------------------------
+HD · Net sales                                   105   832      5    FY2026Q1  100.0%
+HD · Adjusted diluted EPS                         15    50      4    FY2026Q1  81.2%
+HD · Comparable sales, total company              29    69      2    FY2026Q1  112.0%
+ADI · Revenue                                     95   691      5   FY2026TTM  100.0%
+ADI · Adjusted diluted EPS                        46    71      2    FY2026Q2  36.5%
+ADI · Adjusted gross margin                       51   122      1    FY2026Q2  79.5%
+LSE:HAS · Net fees                                16    74      3    FY2025H1  100.0%
+LSE:HAS · Pre-exceptional operating profit        18    68      2    FY2025H1  99.6%
+LSE:HAS · Pre-exceptional basic EPS                9    22      1    FY2025H1  0.0%
+DE · Worldwide net sales and revenues            129   581      6   FY2026TTM  100.0%
+DE · Diluted EPS (GAAP)                          121   182      4    FY2026Q2  81.3%
+DE · Production & Precision Ag operating profit      45   106      3    FY2026Q2  0.0%
+
+  refusals (why a fact did not enter the panel):
+      1,322  de_net_income:unresolved_period
+        969  de_net_income:segment_context
+        885  de_ppa_net_sales:wrong_segment
+        468  de_ppa_operating_profit:wrong_segment
+        436  de_ppa_net_sales:row_mis_bindable
+        409  de_diluted_eps:unresolved_phrase
+        325  hd_diluted_eps:unresolved_phrase
+        282  de_ppa_net_sales:scale_unknown
+  (1.7s)
+
+=== feature: check_panel =================================================
+metric                            period        expected       panel  wit  agreelanes             verdict
+----------------------------------------------------------------------------------------------------------------
+hd_net_sales                      FY2025Q2     45,277.00  45,277.000   14    57%  corpus,prose,sa,secPASS
+hd_net_sales                      FY2026Q1     41,765.00  41,765.000   15    60%  corpus,prose,sa,secPASS
+hd_adj_diluted_eps                FY2025Q2          4.68       4.680    4   100%  corpus,prose    PASS
+hd_adj_diluted_eps                FY2026Q1          3.43       3.430    5   100%  corpus,prose    PASS
+hd_comparable_sales               FY2025Q2          1.00       1.000    6   100%  corpus,prose    PASS
+hd_comparable_sales               FY2026Q1          0.60       0.600    4   100%  prose           PASS
+adi_revenue                       FY2026Q2      3,623.00   3,623.465   10    80%  corpus,sa,sec   PASS
+adi_revenue                       FY2025Q3      2,880.00   2,880.348   12    83%  corpus,sa,sec   PASS
+adi_adj_diluted_eps               FY2026Q2          3.09       3.090    2   100%  corpus          PASS
+adi_adj_gross_margin              FY2026Q2         73.00      73.000    3   100%  corpus          PASS
+de_net_sales_and_revenues         FY2026Q2     13,369.00  13,369.000    9   100%  corpus,prose,sa,secPASS
+de_diluted_eps                    FY2026Q2          6.55       6.550    3   100%  corpus,sa,sec   PASS
+de_ppa_operating_profit           FY2026Q2        706.00     706.000    2   100%  corpus          PASS
+has_net_fees                      FY2025FY        972.40     972.400    8    38%  corpus          PASS
+has_pre_exc_operating_profit      FY2025FY         45.60      45.600    6    33%  corpus          PASS
+has_pre_exc_basic_eps             FY2025FY          1.31       1.310    3   100%  corpus          PASS
+----------------------------------------------------------------------------------------------------------------
+16/16 panel values match the filings
+  (0.0s)
+
+=== feature: guides ======================================================
+feature/guides.parquet 222 stated guides bound to 168 (metric, period) keys
+  refused: unresolved_period 43, too_wide 0, no_metric_match 1,736
+
+metric                          shape     guides  periods     first      last
+--------------------------------------------------------------------------------
+adi_adj_diluted_eps             level         33       30  FY2019Q2  FY2026Q3
+adi_adj_operating_margin        margin        32       30  FY2019Q2  FY2026Q3
+adi_diluted_eps                 level         33       30  FY2019Q2  FY2026Q3
+adi_revenue                     level         42       36  FY2015Q3  FY2026Q3
+de_net_income                   level         25       11  FY2015FY  FY2026FY
+hd_adj_diluted_eps              growth         9        5  FY2018FY  FY2026FY
+hd_comparable_sales             level         15        6  FY2019FY  FY2026FY
+hd_gross_margin                 margin         8        6  FY2018FY  FY2026FY
+hd_net_sales                    growth        25       14  FY2013FY  FY2026FY
+  (0.0s)
+
+=== feature: seasonality =================================================
+feature/seasonality.parquet 52 (metric, quarter) shares over 13 metrics
+
+metric                                 Q1       Q2       Q3       Q4  yrs  recent-4y in brackets
+------------------------------------------------------------------------------------------------
+adi_adj_diluted_eps                 24.5%    21.6%    27.6%    26.3%    5  [23.4% 22.0% 28.5% 26.1%]
+adi_adj_operating_income            22.3%    23.1%    25.9%    28.8%    5  [22.4% 23.2% 25.5% 28.9%]
+adi_diluted_eps                     21.8%    24.8%    26.3%    27.1%   17  [21.0% 25.3% 25.2% 28.5%]
+adi_revenue                         22.7%    23.4%    24.9%    29.1%   12  [24.3% 24.5% 25.4% 25.7%]
+de_diluted_eps                      15.1%    34.2%    30.0%    20.8%   16  [18.2% 31.6% 26.5% 23.7%]
+de_net_income                       18.3%    33.2%    29.7%    18.8%   10  [18.5% 31.7% 26.4% 23.4%]
+de_net_sales_and_revenues           20.3%    27.9%    26.1%    25.8%   10  [20.3% 27.8% 26.1% 25.8%]
+de_ppa_net_sales                    18.9%    27.9%    25.6%    27.6%    6  [18.9% 28.6% 25.6% 27.0%]
+de_ppa_operating_profit             15.0%    32.3%    26.7%    26.0%    6  [15.0% 33.7% 25.6% 25.8%]
+hd_adj_diluted_eps                  22.3%    32.6%    25.0%    20.2%   17  [24.6% 31.0% 25.2% 19.2%]
+hd_diluted_eps                      22.3%    32.6%    25.0%    20.2%   17  [24.6% 31.0% 25.2% 19.2%]
+hd_net_sales                        23.8%    28.0%    24.8%    23.5%   13  [24.0% 27.6% 24.9% 23.4%]
+hd_operating_income                 22.6%    32.1%    25.0%    20.3%   17  [24.6% 30.5% 25.3% 19.5%]
+
+  years dropped for failing Σ4Q == stated annual total:
+    adi_adj_operating_income        FY2019, FY2023
+    de_diluted_eps                  FY2015
+    de_net_income                   FY2012, FY2013, FY2014, FY2015, FY2016, FY2017, FY2018
+    de_net_sales_and_revenues       FY2011, FY2012, FY2013, FY2014, FY2015, FY2016, FY2017
+
+  the two splits the forecast turns on:
+    hd_net_sales Q2: mean 28.00%  recent 27.62%  sd 0.52%  drift -0.08%/yr  (n=13)
+    de_net_income Q3: mean 29.74%  recent 26.44%  sd 6.56%  drift -0.74%/yr  (n=10)
+  (0.0s)
+
+=== feature: conservatism ================================================
+feature/guide_vs_actual.parquet 133 guide→outcome pairs
+feature/conservatism.parquet    7 (metric, shape) biases
+
+metric                          shape      n   beat  >high    bias med   bias sd  range pos
+------------------------------------------------------------------------------------------------
+adi_adj_diluted_eps             level     25    64%    32%      +1.80%   +14.34%       0.70
+adi_adj_operating_margin        margin    25    80%    44%     +0.70pp   +9.28pp       1.00
+adi_diluted_eps                 level     28    71%    39%      +6.74%   +16.87%       0.95
+adi_revenue                     level     34    88%    29%      +2.67%   +49.30%       0.87
+de_net_income                   level      8    62%    50%      +6.30%   +20.49%       1.37
+hd_comparable_sales             level      1     0%     0%     -2.80pp   +0.00pp          —
+hd_net_sales                    growth    12    75%    75%     +0.65pp   +2.82pp       3.71
+
+  refused as unit mismatches (not misses): adi_adj_operating_margin×3, adi_diluted_eps×1, adi_revenue×2, de_net_income×2, hd_adj_diluted_eps×1, hd_gross_margin×2, hd_net_sales×1
+  (0.0s)
+
+=== feature: matrix ======================================================
+feature/training_matrix.parquet 1,327 rows × 74 columns  (1,315 labelled)
+
+column                          non-null  coverage
+----------------------------------------------------
+fiscal_year                        1,327      100%
+is_prediction                      1,327      100%
+as_of                              1,327      100%
+is_target                          1,327      100%
+ordinal                            1,327      100%
+y_value                            1,315       99%
+y_yoy                              1,182       89%
+y_vs_lag4                          1,183       89%
+lag1                               1,231       93%
+lag2                               1,182       89%
+lag4                               1,195       90%
+qoq_lag1                           1,143       86%
+yoy_lag1                           1,115       84%
+yoy_lag4                           1,066       80%
+yoy_accel                          1,036       78%
+trailing4_sum                        768       58%
+yoy_vol                              876       66%
+n_history                          1,327      100%
+fy_weeks                           1,030       78%
+lag1_n_witnesses                   1,231       93%
+lag1_consensus_share               1,231       93%
+has_guide                          1,327      100%
+guide_low                            146       11%
+guide_high                           146       11%
+guide_mid                            146       11%
+guide_rel_width                      146       11%
+guide_n_restatements               1,327      100%
+guide_age_days                       146       11%
+fy_prior_total                     1,181       89%
+has_fy_guide                       1,327      100%
+fy_guide_shape                       137       10%
+fy_guide_low                         137       10%
+fy_guide_high                        137       10%
+fy_guide_mid                         137       10%
+fy_guide_rel_width                   137       10%
+fy_guide_implied_level               128       10%
+fy_guide_age_days                    137       10%
+ytd_before                           650       49%
+fy_guide_residual                     90        7%
+season_share_of_remaining_pit        493       37%
+anchor_prior_year                  1,195       90%
+anchor_seasonal_last                  78        6%
+anchor_seasonal_recent                78        6%
+anchor_residual                       78        6%
+anchor_guide_mid                     146       11%
+anchor_fy_guide_direct                24        2%
+companion_metric                     306       23%
+companion_guide_mid                  189       14%
+gap_to_companion_lag1                269       20%
+gap_to_companion_mean3               242       18%
+gap_is_ratio                         306       23%
+anchor_companion_lag1                172       13%
+anchor_companion_mean3               165       12%
+macro_IPG3344S_yoy                   373       28%
+macro_IPG3344S_n                     373       28%
+macro_A31SNO_yoy                     373       28%
+macro_A31SNO_n                       373       28%
+anchor_yoy_carry                   1,097       83%
+anchor_lag1                        1,231       93%
+anchor_runrate_seasonal              489       37%
+anchor_stated_growth                   4        0%
+anchor_consensus                       2        0%
+external_source                        6        0%
+external_low                           5        0%
+external_high                          5        0%
+external_n_analysts                    2        0%
+external_position                      1        0%
+
+ticker    metric                             rows  guided  season   bias
+--------------------------------------------------------------------------
+ADI       adi_adj_diluted_eps                  35      26      11     23
+ADI       adi_adj_gross_margin                 39       0       0      0
+ADI       adi_adj_operating_income             39       0      14      0
+ADI       adi_adj_operating_margin             37      27       0     23
+ADI       adi_diluted_eps                      90      29      58     26
+ADI       adi_diluted_shares                   89       0       0      0
+ADI       adi_gross_margin                     59       0       0      0
+ADI       adi_revenue                          64      36      39     42
+DE        de_diluted_eps                       91       0      59      0
+DE        de_diluted_shares                    78       0       0      0
+DE        de_net_income                        88      10      58      0
+DE        de_net_sales_and_revenues            91       0      59      0
+DE        de_ppa_net_sales                     32       0      14      0
+DE        de_ppa_operating_profit              33       0      15      0
+HD        hd_adj_diluted_eps                   13       2      10      0
+HD        hd_comparable_sales                  24       1       0      0
+HD        hd_diluted_eps                       90       0      57      0
+HD        hd_diluted_shares                    84       0       0      0
+HD        hd_gross_margin                      20       2       0      0
+HD        hd_net_sales                         77      13      42      2
+HD        hd_operating_income                  90       0      57      0
+LSE:HAS   has_conversion_rate                   8       0       0      0
+LSE:HAS   has_net_fee_growth_actual            27       0       0      0
+LSE:HAS   has_net_fees                          8       0       0      0
+LSE:HAS   has_pbt_pre_exc                       5       0       0      0
+LSE:HAS   has_pre_exc_basic_eps                 8       0       0      0
+LSE:HAS   has_pre_exc_operating_profit          8       0       0      0
+  (0.9s)
+
+=== feature: design ======================================================
+feature/design_matrix.parquet 12 target rows  (no target period is present in the panel — every row is a genuine forecast)
+
+target                                          prior               guide       bias   n   season  consensus
+----------------------------------------------------------------------------------------------------------------
+HD · Net sales                              45,277.00            2.5–4.5%    +0.65pp  12    27.6%  47,235.45
+HD · Adjusted diluted EPS                        4.68                0–4%          —   0    31.0%       4.73
+HD · Comparable sales, total company             1.00                0–2%    -2.80pp   1        —        nan
+ADI · Revenue                                2,880.35          3800–4000$      +2.7%  34    25.4%   3,925.04
+ADI · Adjusted diluted EPS                       1.81          3.15–3.45$      +1.8%  25    28.5%       3.33
+ADI · Adjusted gross margin                     69.20                   —          —   0        —      72.30
+LSE:HAS · Net fees                             972.40                   —          —   0        —        nan
+LSE:HAS · Pre-exceptional operating profit      45.60                   —          —   0        —      43.50
+LSE:HAS · Pre-exceptional basic EPS              1.31                   —          —   0        —        nan
+DE · Worldwide net sales and revenues       12,018.00                   —          —   0    26.1%  10,731.54
+DE · Diluted EPS (GAAP)                          4.75                   —          —   0    26.5%       4.70
+DE · Production & Precision Ag operating profit     580.00                   —          —   0    25.6%        nan
+
+  in-quarter nowcasts (months of the target quarter already published):
+    HD       RSBMGESD=+6.11%  HOUST=+4.36%  MORTGAGE30US=-3.61%
+  (0.2s)
+
+=== feature: audit =======================================================
+look-ahead audit
+--------------------------------------------------------------------------------------------
+  PASS  corpus documents                            newest published_at 2026-08-03
+  PASS  target period absent from panel             0 of 12 targets already reported
+  PASS  vendor realised value for a target period   0 rows
+  PASS  fred_observations newest observation        2026-08-13
+  PASS  labour_observations newest observation      2026-06-01
+  PASS  yh_bars newest observation                  2026-08-16
+
+  6/6 clean  — every input predates the deadline
+
+52/53-week calendar audit
+--------------------------------------------------------------------------------------------
+  HD       FY2026Q2   91d (13.0w)   364d YoY    13-week quarter
+  ADI      FY2026Q3   91d (13.0w)   364d YoY    13-week quarter
+  LSE:HAS  FY2026     —                         30 June year end, not 52/53-week
+  DE       FY2026Q3   91d (13.0w)   371d YoY    13-week quarter
+
+additivity audit  (Σ four quarters == the filer's own annual figure)
+--------------------------------------------------------------------------------------------
+  FAIL  adi_adj_diluted_eps FY2025                  Σ4Q 7.6 vs stated 7.8 (+3.02%)
+  FAIL  adi_adj_operating_income FY2023             Σ4Q 5,927.0 vs stated 6,014.0 (+1.45%)
+  FAIL  adi_diluted_eps FY2021                      Σ4Q 3.7 vs stated 3.5 (+6.52%)
+  FAIL  de_diluted_eps FY2015                       Σ4Q 8.1 vs stated 5.8 (+40.47%)
+  FAIL  de_diluted_eps FY2017                       Σ4Q 6.6 vs stated 6.7 (+0.60%)
+  FAIL  de_net_income FY2012                        Σ4Q 4,253.6 vs stated 3,064.7 (+38.79%)
+  FAIL  de_net_income FY2013                        Σ4Q 6,267.4 vs stated 3,537.3 (+77.18%)
+  FAIL  de_net_income FY2014                        Σ4Q 5,674.5 vs stated 3,162.0 (+79.46%)
+  FAIL  de_net_income FY2015                        Σ4Q 3,528.7 vs stated 1,940.0 (+81.89%)
+  FAIL  de_net_income FY2016                        Σ4Q 2,762.4 vs stated 1,524.0 (+81.26%)
+  FAIL  de_net_income FY2017                        Σ4Q 3,797.4 vs stated 2,159.0 (+75.89%)
+  FAIL  de_net_income FY2018                        Σ4Q 2,996.4 vs stated 2,368.0 (+26.54%)
+  FAIL  de_net_sales_and_revenues FY2011            Σ4Q 43,713.3 vs stated 32,012.5 (+36.55%)
+  FAIL  de_net_sales_and_revenues FY2012            Σ4Q 77,217.8 vs stated 36,157.1 (+113.56%)
+  FAIL  de_net_sales_and_revenues FY2013            Σ4Q 81,326.6 vs stated 37,795.4 (+115.18%)
+  FAIL  de_net_sales_and_revenues FY2014            Σ4Q 63,169.1 vs stated 36,067.0 (+75.14%)
+  FAIL  de_net_sales_and_revenues FY2015            Σ4Q 51,011.0 vs stated 28,863.0 (+76.73%)
+  FAIL  de_net_sales_and_revenues FY2016            Σ4Q 46,768.0 vs stated 26,644.0 (+75.53%)
+  FAIL  de_net_sales_and_revenues FY2017            Σ4Q 51,458.0 vs stated 29,738.0 (+73.04%)
+  FAIL  hd_adj_diluted_eps FY2025                   Σ4Q 14.7 vs stated 3.6 (+312.92%)
+  133/153 (metric, year) pairs reconcile exactly
+  (0.7s)
+
+====================================================================
+  ap_bars.parquet: 24,021 rows x 10 cols, 826 KiB
+  ap_news.parquet: 16,428 rows x 13 cols, 1060 KiB
+  consensus.parquet: 57 rows x 15 cols, 11 KiB
+  document_calendar.parquet: 1,139 rows x 13 cols, 24 KiB
+  document_lanes.parquet: 1,139 rows x 16 cols, 37 KiB
+  documents.parquet: 1,139 rows x 21 cols, 93 KiB
+  fiscal_calendar.parquet: 174 rows x 9 cols, 5 KiB
+  fred_observations.parquet: 89,532 rows x 9 cols, 473 KiB
+  guidance.parquet: 2,437 rows x 19 cols, 142 KiB
+  labour_observations.parquet: 6,357 rows x 9 cols, 20 KiB
+  nq_forecast.parquet: 79 rows x 12 cols, 6 KiB
+  nq_statements.parquet: 2,385 rows x 7 cols, 16 KiB
+  nq_surprise.parquet: 34 rows x 8 cols, 4 KiB
+  peer_guidance.parquet: 582 rows x 17 cols, 38 KiB
+  prose_facts.parquet: 1,981 rows x 16 cols, 65 KiB
+  sa_financials.parquet: 50,722 rows x 13 cols, 281 KiB
+  sa_forecast.parquet: 2,326 rows x 12 cols, 22 KiB
+  sa_refusals.parquet: 15 rows x 5 cols, 2 KiB
+  sa_segments.parquet: 1,400 rows x 11 cols, 29 KiB
+  sec_facts.parquet: 85,340 rows x 19 cols, 475 KiB
+  sec_facts_first_reported.parquet: 43,863 rows x 19 cols, 320 KiB
+  statement_facts.parquet: 223,382 rows x 33 cols, 2272 KiB
+  symbology.parquet: 4 rows x 13 cols, 4 KiB
+  symbology_checks.parquet: 4 rows x 9 cols, 3 KiB
+  table_cells.parquet: 410,926 rows x 18 cols, 3133 KiB
+  table_columns.parquet: 24,503 rows x 16 cols, 81 KiB
+  table_headers.parquet: 16,408 rows x 12 cols, 3802 KiB
+  table_spec.parquet: 14,222 rows x 19 cols, 99 KiB
+  target_periods.parquet: 4 rows x 6 cols, 2 KiB
+  yh_actions.parquet: 2,948 rows x 11 cols, 20 KiB
+  yh_bars.parquet: 476,262 rows x 12 cols, 9411 KiB
+  yh_calendar.parquet: 60 rows x 13 cols, 6 KiB
+  yh_earnings_history.parquet: 116 rows x 10 cols, 7 KiB
+  yh_estimates.parquet: 2,636 rows x 10 cols, 18 KiB
+  yh_insider.parquet: 2,513 rows x 11 cols, 32 KiB
+  yh_key_stats.parquet: 60 rows x 41 cols, 22 KiB
+  yh_ownership.parquet: 272 rows x 10 cols, 12 KiB
+  yh_rating_actions.parquet: 8,205 rows x 9 cols, 37 KiB
+  yh_recommendations.parquet: 115 rows x 10 cols, 4 KiB
+  yh_statements.parquet: 1,736 rows x 9 cols, 7 KiB
+  additivity_audit.parquet: 153 rows x 8 cols, 7 KiB
+  calendar_audit.parquet: 4 rows x 9 cols, 3 KiB
+  conservatism.parquet: 7 rows x 13 cols, 4 KiB
+  containment_repairs.parquet: 14 rows x 9 cols, 3 KiB
+  design_matrix.parquet: 12 rows x 55 cols, 18 KiB
+  estimator_folds.parquet: 133 rows x 8 cols, 5 KiB
+  estimator_validation.parquet: 11 rows x 7 cols, 3 KiB
+  fiscal_periods.parquet: 169 rows x 8 cols, 3 KiB
+  fiscal_weeks.parquet: 49 rows x 5 cols, 2 KiB
+  guide_vs_actual.parquet: 133 rows x 19 cols, 11 KiB
+  guides.parquet: 222 rows x 19 cols, 13 KiB
+  ladder_repairs.parquet: 162 rows x 9 cols, 5 KiB
+  metric_panel.parquet: 1,755 rows x 21 cols, 43 KiB
+  seasonality.parquet: 52 rows x 19 cols, 10 KiB
+  seasonality_years.parquet: 134 rows x 8 cols, 8 KiB
+  training_matrix.parquet: 1,327 rows x 101 cols, 201 KiB
+  anchor_examples.parquet: 4,604 rows x 89 cols, 367 KiB
+  anchor_skill.parquet: 14 rows x 7 cols, 3 KiB
+  cv_folds.parquet: 32,104 rows x 16 cols, 694 KiB
+  forecasts.parquet: 12 rows x 19 cols, 9 KiB
+  submission_cells.parquet: 12 rows x 8 cols, 3 KiB
+
+  24.9 MB on disk
+
+=== model: dataset =====================================================
+model/anchor_examples.parquet 4,604 examples (4,537 labelled) from 1,327 matrix rows
+
+relative  (y/anchor − 1)   4,000 labelled examples
+  anchor                      n  median |r|   p90 |r|      bias
+  -------------------------------------------------------------
+  companion_lag1            129      0.1955    0.8050   +0.0432
+  companion_mean3           125      0.2528    0.7868   -0.0307
+  companion_residual         72      0.2886    1.2617   +0.0763
+  consensus                   1      0.1915    0.1915   -0.1915
+  guide_mid                  98      0.0605    0.3252   +0.0277
+  lag1                      997      0.1419    0.5357   +0.0000
+  prior_year                991      0.1146    0.5414   +0.0125
+  residual                   64      0.1213    1.1744   +0.0207
+  runrate_seasonal          473      0.1380    0.5053   +0.0266
+  seasonal_last              67      0.0641    0.8954   +0.0216
+  seasonal_recent            67      0.1004    0.9540   +0.0292
+  stated_growth               3      0.0114    0.0114   +0.0114
+  yoy_carry                 913      0.0769    0.4954   -0.0038
+
+points    (y − anchor, pp)   537 labelled examples
+  anchor                      n  median |r|   p90 |r|      bias
+  -------------------------------------------------------------
+  companion_lag1             23      1.8000    4.1000   -0.3000
+  companion_mean3            16      2.5500    4.8667   +1.6125
+  fy_guide_direct            14      1.5500    2.8000   -0.5000
+  guide_mid                  25      0.7000    2.0000   +0.7000
+  lag1                      172      1.1750    5.8000   +0.0018
+  prior_year                155      2.7000    9.2000   -0.0016
+  yoy_carry                 132      2.4000    9.8000   +0.0005
+
+  refused:
+    no_anchor                                              62
+    residual_beyond_cap:adi_adj_gross_margin               23
+    residual_beyond_cap:de_net_income                      23
+    residual_beyond_cap:adi_gross_margin                   21
+    residual_beyond_cap:adi_diluted_eps                    19
+    residual_beyond_cap:de_diluted_eps                     19
+    residual_beyond_cap:adi_adj_operating_margin           15
+    near_zero:anchor_guide_mid                             15
+  (0.5s)
+
+=== model: train =======================================================
+walk-forward: 7 folds, 63 features, 4,604 examples
+
+per-anchor estimators (one prediction per anchor)
+estimator            n  median NAE      p75      p90  beat raw  capped @5
+-------------------------------------------------------------------------
+raw              3,928      0.1523   0.4000   1.6000       34%        75%
+bias             3,928      0.1554   0.4130   1.8405       39%        77%
+gbm              3,928      0.1210   0.3611   1.4821       44%        75%
+
+blended — one prediction per row, which is what gets submitted
+estimator         rows  median NAE      p75      p90  mean score  capped @5
+---------------------------------------------------------------------------
+best_single      1,016      0.0944   0.3809   1.5000       3.801        63%
+best_metric      1,016      0.0944   0.3646   1.8000       3.783        63%
+best_metric_gbm   1,016      0.1144   0.3949   1.7259       4.096        70%
+best_metric_bias   1,016      0.1016   0.3876   1.8000       3.794        63%
+best_selective   1,016      0.1047   0.3876   1.7522       4.082        68%
+best_progressive   1,016      0.0957   0.3471   1.6447       3.942        65%
+best_guidebias   1,016      0.0942   0.3627   1.7000       3.745        62%
+best_guiderange   1,016      0.0947   0.3646   1.7000       3.734        62%
+top2             1,016      0.0983   0.3660   1.8000       3.834        64%
+top2_gbm         1,016      0.1142   0.4092   1.7948       4.104        70%
+top2_selective   1,016      0.1091   0.3941   1.8208       4.066        69%
+combo_raw        1,016      0.0968   0.3526   1.5772       3.885        65%
+combo_bias       1,016      0.1179   0.3800   1.6124       3.896        66%
+combo_gbm        1,016      0.1170   0.3942   1.4599       4.082        70%
+shrunk_1.00      1,016      0.0944   0.3646   1.8000       3.783        63%
+shrunk_0.90      1,016      0.0946   0.3621   1.7000       3.796        64%
+shrunk_0.80      1,016      0.0945   0.3410   1.7000       3.821        64%
+shrunk_0.70      1,016      0.0949   0.3505   1.7800       3.829        64%
+shrunk_0.55      1,016      0.0948   0.3415   1.7874       3.852        66%
+shrunk_0.40      1,016      0.0956   0.3410   1.7800       3.874        66%
+
+per anchor type — median normalised error out of sample, lower is better
+  anchor                     n      raw     bias      gbm  best   lift
+  --------------------------------------------------------------------
+  companion_lag1           152   0.2197   0.2541   0.2037  gbm     1.08×
+  companion_mean3          141   0.2687   0.3101   0.2248  gbm     1.20×
+  companion_residual        72   0.2742   0.3345   0.2181  gbm     1.26×
+  consensus                  1   0.2368   0.2368   0.5868  raw     1.00×
+  fy_guide_direct           14   1.5500   3.6000   1.3294  gbm     1.17×
+  guide_mid                123   0.0833   0.0702   0.1603  bias    1.19×
+  lag1                     960   0.1722   0.1838   0.1173  gbm     1.47×
+  prior_year               949   0.1614   0.1601   0.1079  gbm     1.50×
+  residual                  64   0.1207   0.1146   0.1003  gbm     1.20×
+  runrate_seasonal         428   0.1433   0.1364   0.0995  gbm     1.44×
+  seasonal_last             67   0.0636   0.0798   0.1017  raw     1.00×
+  seasonal_recent           67   0.0949   0.1058   0.0932  gbm     1.02×
+  stated_growth              3   0.0113   0.2899   0.5954  raw     1.00×
+  yoy_carry                887   0.0996   0.1047   0.1121  raw     1.00×
+  (6.9s)
+
+=== model: predict =====================================================
+model/forecasts.parquet 12 forecasts
+
+target                                           forecast    prior yr      YoYanchor                    σ  n
+----------------------------------------------------------------------------------------------------------------
+ADI · adi_adj_diluted_eps                            3.39        1.81   +86.9%  guide_mid           0.055  5
+ADI · adi_adj_gross_margin                          73.00       69.20  +3.80pp  lag1                1.000  5
+ADI · adi_revenue                                4,008.00    2,880.35   +39.1%  guide_mid           0.031  5
+DE · de_diluted_eps                                  4.49        4.75    -5.6%  companion_lag1      0.225  7
+DE · de_net_sales_and_revenues                  12,588.63   12,018.00    +4.7%  yoy_carry           0.091  7
+DE · de_ppa_operating_profit                       548.04      580.00    -5.5%  companion_lag1      0.251  7
+HD · hd_adj_diluted_eps                              4.68        4.68    +0.0%  prior_year          0.033  7
+HD · hd_comparable_sales                             1.00        1.00  +0.00pp  fy_guide_direct     1.550  4
+HD · hd_net_sales                               47,082.58   45,277.00    +4.0%  seasonal_recent     0.015  7
+LSE:HAS · has_net_fees                             904.33      972.40    -7.0%  stated_growth       0.011  4
+LSE:HAS · has_pre_exc_basic_eps                      1.31        1.31    +0.0%  prior_year          0.115  5
+LSE:HAS · has_pre_exc_operating_profit              45.60       45.60    +0.0%  prior_year          0.115  4
+
+  guards that fired:
+    adi_adj_diluted_eps: guide midpoint 3.300 shifted by the measured median guide beat (+2.77%)
+    adi_revenue: guide midpoint 3,900.000 shifted by the measured median guide beat (+2.77%)
+    has_pre_exc_basic_eps: rejected yoy_carry=0.426 at 14.7 MADs from its peers; next-best anchor prior_year used instead
+    has_pre_exc_operating_profit: rejected yoy_carry=19.785 at 23.6 MADs from its peers; next-best anchor prior_year used instead
+
+  candidate anchors behind each number:
+    adi_adj_diluted_eps           guide_mid=3.300(σ0.055); lag1=3.090(σ0.166); runrate_seasonal=2.213(σ0.251); prior_year=1.815(σ0.264); yoy_carry=3.032(σ0.288)
+    adi_adj_gross_margin          lag1=73.000(σ1.000); companion_lag1=76.000(σ1.800); yoy_carry=72.800(σ1.850); prior_year=69.200(σ2.100); companion_mean3=75.033(σ2.550)
+    adi_revenue                   guide_mid=3,900.000(σ0.031); lag1=3,623.465(σ0.068); yoy_carry=3,953.247(σ0.109); runrate_seasonal=3,330.051(σ0.174); prior_year=2,880.348(σ0.209)
+    de_diluted_eps                companion_lag1=4.486(σ0.225); yoy_carry=4.686(σ0.231); companion_mean3=4.346(σ0.237); runrate_seasonal=4.529(σ0.238); prior_year=4.750(σ0.245); lag1=6.550(σ0.257); companion_residual=4.658(σ0.269)
+    de_net_sales_and_revenues     yoy_carry=12,588.627(σ0.091); runrate_seasonal=12,467.593(σ0.132); prior_year=12,018.000(σ0.140); lag1=13,369.000(σ0.153); companion_lag1=11,356.027(σ0.200); companion_residual=9,937.889(σ0.279); companion_mean3=9,328.998(σ0.356)
+    de_ppa_operating_profit       companion_lag1=548.041(σ0.251); companion_mean3=638.047(σ0.253); runrate_seasonal=440.757(σ0.329); lag1=706.000(σ0.355); yoy_carry=356.690(σ0.360); prior_year=580.000(σ0.418); companion_residual=821.933(σ0.488)
+    hd_adj_diluted_eps            prior_year=4.680(σ0.033); seasonal_last=4.824(σ0.064); yoy_carry=4.509(σ0.077); seasonal_recent=4.651(σ0.100); residual=4.911(σ0.121); runrate_seasonal=4.688(σ0.138); lag1=3.430(σ0.261)
+    hd_comparable_sales           fy_guide_direct=1.000(σ1.550); lag1=0.600(σ1.550); prior_year=1.000(σ2.500); yoy_carry=1.900(σ2.650)
+    hd_net_sales                  seasonal_recent=47,082.584(σ0.015); yoy_carry=47,445.652(σ0.023); seasonal_last=46,861.695(σ0.024); residual=46,675.243(σ0.026); runrate_seasonal=45,801.850(σ0.044); prior_year=45,277.000(σ0.061); lag1=41,765.000(σ0.090)
+    has_net_fees                  stated_growth=904.332(σ0.011); yoy_carry=849.104(σ0.077); prior_year=972.400(σ0.115); lag1=972.400(σ0.142)
+    has_pre_exc_basic_eps         yoy_carry=0.426(σ0.077); prior_year=1.310(σ0.115); lag1=1.310(σ0.142); companion_lag1=1.250(σ0.195); companion_mean3=1.605(σ0.253)
+    has_pre_exc_operating_profit  yoy_carry=19.785(σ0.077); prior_year=45.600(σ0.115); lag1=45.600(σ0.142); consensus=43.500(σ0.191)
+  (0.0s)
+
+=== model: workbooks ===================================================
+submission/ — 4 workbooks, 12 forecasts written
+
+workbook              cell  metric                              units                 value
+--------------------------------------------------------------------------------------------
+ADI-FY2026Q3.xlsx     C7    Revenue                             USDm               4,008.00
+ADI-FY2026Q3.xlsx     C8    Adjusted diluted EPS                USD / share            3.39
+ADI-FY2026Q3.xlsx     C9    Adjusted gross margin               %                     73.00
+DE-FY2026Q3.xlsx      C7    Worldwide net sales and revenues    USDm              12,588.60
+DE-FY2026Q3.xlsx      C8    Diluted EPS (GAAP)                  USD / share            4.49
+DE-FY2026Q3.xlsx      C9    Production & Precision Ag operating profitUSDm                 548.00
+HAS-FY2026.xlsx       C7    Net fees                            GBPm                 904.30
+HAS-FY2026.xlsx       C8    Pre-exceptional basic EPS           GBp                    1.31
+HAS-FY2026.xlsx       C9    Pre-exceptional operating profit    GBPm                  45.60
+HD-FY2026Q2.xlsx      C7    Net sales                           USDm              47,082.60
+HD-FY2026Q2.xlsx      C8    Adjusted diluted EPS                USD / share            4.68
+HD-FY2026Q2.xlsx      C9    Comparable sales, total company     %                      1.00
+
+  PASS  ADI-FY2026Q3.xlsx     Summary sheet intact, 3 numeric forecasts: [4008, 3.39, 73]
+  PASS  DE-FY2026Q3.xlsx      Summary sheet intact, 3 numeric forecasts: [12588.6, 4.49, 548]
+  PASS  HAS-FY2026.xlsx       Summary sheet intact, 3 numeric forecasts: [904.3, 1.31, 45.6]
+  PASS  HD-FY2026Q2.xlsx      Summary sheet intact, 3 numeric forecasts: [47082.6, 4.68, 1]
+  (0.2s)
+
+====================================================================
+  ap_bars.parquet: 24,021 rows x 10 cols, 826 KiB
+  ap_news.parquet: 16,428 rows x 13 cols, 1060 KiB
+  consensus.parquet: 57 rows x 15 cols, 11 KiB
+  document_calendar.parquet: 1,139 rows x 13 cols, 24 KiB
+  document_lanes.parquet: 1,139 rows x 16 cols, 37 KiB
+  documents.parquet: 1,139 rows x 21 cols, 93 KiB
+  fiscal_calendar.parquet: 174 rows x 9 cols, 5 KiB
+  fred_observations.parquet: 89,532 rows x 9 cols, 473 KiB
+  guidance.parquet: 2,437 rows x 19 cols, 142 KiB
+  labour_observations.parquet: 6,357 rows x 9 cols, 20 KiB
+  nq_forecast.parquet: 79 rows x 12 cols, 6 KiB
+  nq_statements.parquet: 2,385 rows x 7 cols, 16 KiB
+  nq_surprise.parquet: 34 rows x 8 cols, 4 KiB
+  peer_guidance.parquet: 582 rows x 17 cols, 38 KiB
+  prose_facts.parquet: 1,981 rows x 16 cols, 65 KiB
+  sa_financials.parquet: 50,722 rows x 13 cols, 281 KiB
+  sa_forecast.parquet: 2,326 rows x 12 cols, 22 KiB
+  sa_refusals.parquet: 15 rows x 5 cols, 2 KiB
+  sa_segments.parquet: 1,400 rows x 11 cols, 29 KiB
+  sec_facts.parquet: 85,340 rows x 19 cols, 475 KiB
+  sec_facts_first_reported.parquet: 43,863 rows x 19 cols, 320 KiB
+  statement_facts.parquet: 223,382 rows x 33 cols, 2272 KiB
+  symbology.parquet: 4 rows x 13 cols, 4 KiB
+  symbology_checks.parquet: 4 rows x 9 cols, 3 KiB
+  table_cells.parquet: 410,926 rows x 18 cols, 3133 KiB
+  table_columns.parquet: 24,503 rows x 16 cols, 81 KiB
+  table_headers.parquet: 16,408 rows x 12 cols, 3802 KiB
+  table_spec.parquet: 14,222 rows x 19 cols, 99 KiB
+  target_periods.parquet: 4 rows x 6 cols, 2 KiB
+  yh_actions.parquet: 2,948 rows x 11 cols, 20 KiB
+  yh_bars.parquet: 476,262 rows x 12 cols, 9411 KiB
+  yh_calendar.parquet: 60 rows x 13 cols, 6 KiB
+  yh_earnings_history.parquet: 116 rows x 10 cols, 7 KiB
+  yh_estimates.parquet: 2,636 rows x 10 cols, 18 KiB
+  yh_insider.parquet: 2,513 rows x 11 cols, 32 KiB
+  yh_key_stats.parquet: 60 rows x 41 cols, 22 KiB
+  yh_ownership.parquet: 272 rows x 10 cols, 12 KiB
+  yh_rating_actions.parquet: 8,205 rows x 9 cols, 37 KiB
+  yh_recommendations.parquet: 115 rows x 10 cols, 4 KiB
+  yh_statements.parquet: 1,736 rows x 9 cols, 7 KiB
+  additivity_audit.parquet: 153 rows x 8 cols, 7 KiB
+  calendar_audit.parquet: 4 rows x 9 cols, 3 KiB
+  conservatism.parquet: 7 rows x 13 cols, 4 KiB
+  containment_repairs.parquet: 14 rows x 9 cols, 3 KiB
+  design_matrix.parquet: 12 rows x 55 cols, 18 KiB
+  estimator_folds.parquet: 133 rows x 8 cols, 5 KiB
+  estimator_validation.parquet: 11 rows x 7 cols, 3 KiB
+  fiscal_periods.parquet: 169 rows x 8 cols, 3 KiB
+  fiscal_weeks.parquet: 49 rows x 5 cols, 2 KiB
+  guide_vs_actual.parquet: 133 rows x 19 cols, 11 KiB
+  guides.parquet: 222 rows x 19 cols, 13 KiB
+  ladder_repairs.parquet: 162 rows x 9 cols, 5 KiB
+  metric_panel.parquet: 1,755 rows x 21 cols, 43 KiB
+  seasonality.parquet: 52 rows x 19 cols, 10 KiB
+  seasonality_years.parquet: 134 rows x 8 cols, 8 KiB
+  training_matrix.parquet: 1,327 rows x 101 cols, 201 KiB
+  anchor_examples.parquet: 4,604 rows x 89 cols, 367 KiB
+  anchor_skill.parquet: 14 rows x 7 cols, 3 KiB
+  cv_folds.parquet: 32,104 rows x 16 cols, 694 KiB
+  forecasts.parquet: 12 rows x 19 cols, 9 KiB
+  submission_cells.parquet: 12 rows x 8 cols, 3 KiB
+
+  24.9 MB on disk
