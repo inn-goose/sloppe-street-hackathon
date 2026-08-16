@@ -1,0 +1,20 @@
+{
+  "_note": "US equities only — HD/ADI/DE. Hays is LSE-listed and Alpaca does not carry it, which is why yahoo is the provider of record for the 4-name universe.",
+  "http": {
+    "max_rps": 3.0,
+    "timeout_sec": 30,
+    "page_limit": 1000
+  },
+  "credentials": {
+    "_note": "By environment variable name only. Never stored here, never logged, never committed.",
+    "key_id_env": "APCA_API_KEY_ID",
+    "secret_env": "APCA_API_SECRET_KEY"
+  },
+  "feed": "sip",
+  "_feed_note": "Measured on this credential: sip=2,669 bars from 2016-01-04, iex=1,518 from 2020-07-27, boats=173 from 2024-09-24, otc=403. next_page_token was null on all of them, so the short answers looked complete.",
+  "horizon": {
+    "start": "2010-01-01",
+    "_note": "Deliberately earlier than the source's floor (2016-01-04) so the source states its own limit rather than us assuming it."
+  },
+  "products": ["bars_1d", "news"]
+}

@@ -1,0 +1,13 @@
+{
+  "_note": "Yahoo publishes no quota and sent no rate header during probing. max_rps here is deliberate restraint on a free public surface, not a measured ceiling.",
+  "http": {
+    "max_rps": 1.8,
+    "timeout_sec": 30,
+    "retries": 3
+  },
+  "horizon": {
+    "start": "2014-01-01",
+    "_note": "Matches the corpus horizon (dense from 2015) plus a year of run-up so an 11-year panel has its own lags."
+  },
+  "products": ["chart", "quote_summary"]
+}

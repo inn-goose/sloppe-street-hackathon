@@ -1,0 +1,10 @@
+# Pinned to what the final run used.
+#
+# LightGBM needs the OpenMP runtime, which is not bundled on macOS:
+#     brew install libomp
+pyarrow==25.0.1
+numpy==2.5.2
+lightgbm==4.7.0
+openpyxl==3.1.5
+scikit-learn==1.9.0
+scipy==1.18.0

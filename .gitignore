@@ -1,0 +1,41 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Third-party material that MAY NOT be redistributed.
+#
+# `starter/` is a separate repository (the competition's own, MIT for its code but
+# NOT for the documents under challenge/offline-data/, which remain the property of
+# their owners). It is checked out beside this project and read, never vendored.
+# ─────────────────────────────────────────────────────────────────────────────
+starter/
+
+# The local store. Regenerated end-to-end by `python -m code.run all`, and excluded
+# because data/raw/corpus/ holds 1,140 verbatim copies of those same licensed
+# filings and data/extracted/ quotes them as evidence. Nothing here is an input the
+# repository is missing — it is all derived from the corpus above.
+data/
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Secrets and personal data. Never committed, per RULES.md:
+# "Do not commit entry.json or publish email addresses in the architecture HTML."
+# ─────────────────────────────────────────────────────────────────────────────
+entry.json
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Environments and build noise
+# ─────────────────────────────────────────────────────────────────────────────
+# `.venv` is a symlink here, so it needs the slash-less form as well as the directory form
+.venv
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+node_modules/
+research/
+.DS_Store
+.ipynb_checkpoints/

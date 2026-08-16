@@ -1,0 +1,20 @@
+{
+  "_note": "Laptop-local settings. A file plus an environment override is the whole mechanism, because there is no server in this run.",
+  "store": {
+    "compression": "zstd",
+    "roots": {
+      "raw": "data/raw",
+      "extracted": "data/extracted",
+      "feature": "data/feature"
+    }
+  },
+  "universe": {
+    "_note": "The whole universe is four names. There is no cross-section, which is why every peer and macro series is fetched explicitly rather than screened.",
+    "targets": ["HD", "ADI", "LSE:HAS", "DE"],
+    "horizon_years": 11
+  },
+  "run": {
+    "parallel": false,
+    "_note": "One laptop, one process. Yahoo is paced at the provider level; nothing here fans out."
+  }
+}
