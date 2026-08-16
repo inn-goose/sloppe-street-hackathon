@@ -337,7 +337,11 @@ def build() -> list[dict]:
             "ticker": metric.ticker, "metric": name, "fiscal_year": fiscal_year,
             "fiscal_period": fiscal_period, "label": f"FY{fiscal_year}{fiscal_period}",
             "is_prediction": cell is None,
-            "as_of": str(cell["latest_published_at"]) if cell else DEADLINE,
+            # ⚠️ The earliest witness, floored at the period end: a figure cannot be known before
+            # the period it measures has finished, and a later restatement does not change when it
+            # first became public. This is the timestamp the backtest orders folds on.
+            "as_of": _knowable_at(cell, ends.get(
+                (metric.ticker, fiscal_year, fiscal_period))) if cell else DEADLINE,
             "unit": metric.unit, "basis": metric.basis, "is_target": metric.is_target,
             "ordinal": here,
 
@@ -691,6 +695,17 @@ def _companion_columns(name: str, metric, fiscal_year: int, fiscal_period: str,
         "anchor_companion_residual": residual_anchor,
     })
     return out
+
+
+def _knowable_at(cell: dict, period_end: str | None) -> str:
+    """The first date this value could have been read anywhere, floored at its own period end."""
+    first = str(cell.get("first_published_at") or "")
+    latest = str(cell.get("latest_published_at") or "")
+    stamp = first or latest
+    if period_end and stamp < period_end:
+        # a mention before the period closed is forward-looking, not a report of the outcome
+        return latest if latest > period_end else period_end
+    return stamp or DEADLINE
 
 
 def _projected_end(ticker: str) -> str | None:

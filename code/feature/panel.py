@@ -244,6 +244,14 @@ def build() -> tuple[list[dict], dict]:
             "grade": Counter(w["grade"] for w in group).most_common(1)[0][0],
             "verified": any(w["check"] == "verified" for w in group),
             "latest_published_at": max((w["published_at"] or "") for w in group),
+            # ⛔ **When the figure first became knowable, which is not when it was last mentioned.**
+            # A value is restated in later comparatives, and vendor lanes stamp their rows with the
+            # *fetch* date, so `latest_published_at` runs a median 387 days after the period end and
+            # reaches the deadline itself on some rows. Ordering a walk-forward backtest by that
+            # date sorts partly by when we downloaded things, letting a fold train on periods that
+            # come after the ones it is tested on. The earliest witness is the honest timestamp.
+            "first_published_at": min((w["published_at"] for w in group if w["published_at"]),
+                                      default=""),
             # kept with their support so a losing candidate can be reinstated, by vote, when the
             # winner breaks an identity
             "_candidates": sorted(counts.items(), key=lambda kv: (-kv[1], -kv[0])),
