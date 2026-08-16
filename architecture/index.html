@@ -170,23 +170,30 @@ was <em>published</em>, and scored on the competition's own rule:</p>
 
 <table>
 <tr><th>strategy</th><th class="n">median norm. error</th><th class="n">mean score</th><th></th></tr>
-<tr><td><strong>best anchor per metric, + guide-bias</strong></td><td class="n">0.0947</td><td class="n"><strong>3.745</strong></td><td class="win">adopted</td></tr>
-<tr><td>best anchor per metric, raw</td><td class="n">0.0948</td><td class="n">3.783</td><td></td></tr>
-<tr><td>best anchor, pooled dispersion</td><td class="n">0.0944</td><td class="n">3.801</td><td></td></tr>
-<tr><td>inverse-variance blend of all anchors</td><td class="n">0.0968</td><td class="n">3.885</td><td></td></tr>
-<tr><td>best anchor, GBM-corrected</td><td class="n">0.1130</td><td class="n">4.117</td><td class="bad">rejected</td></tr>
-<tr><td>blend of all, GBM-corrected</td><td class="n">0.1170</td><td class="n">4.082</td><td class="bad">rejected</td></tr>
+<tr><td><strong>best anchor per metric, + guide-bias</strong></td><td class="n">0.0937</td><td class="n"><strong>3.742</strong></td><td class="win">adopted</td></tr>
+<tr><td>best anchor per metric, + guide range-position</td><td class="n">0.0935</td><td class="n">3.730</td><td></td></tr>
+<tr><td>best anchor per metric, raw</td><td class="n">0.0940</td><td class="n">3.782</td><td></td></tr>
+<tr><td>best anchor, pooled dispersion</td><td class="n">0.0934</td><td class="n">3.791</td><td></td></tr>
+<tr><td>inverse-variance blend of all anchors</td><td class="n">0.0952</td><td class="n">3.853</td><td></td></tr>
+<tr><td>shrink chosen anchor toward anchor median</td><td class="n">0.0938</td><td class="n">3.804</td><td></td></tr>
+<tr><td>best anchor, GBM-corrected</td><td class="n">0.1154</td><td class="n">4.117</td><td class="bad">rejected</td></tr>
+<tr><td>blend of all, GBM-corrected</td><td class="n">0.1202</td><td class="n">4.092</td><td class="bad">rejected</td></tr>
 </table>
+
+<p>The guide range-position variant scores marginally better than the adopted guide-bias one, but the
+two are indistinguishable where they differ (t = +0.85, 13 rows better against 14 worse) while
+guide-bias has the stronger evidence against the un-corrected baseline. The simpler, better-evidenced
+one is used.</p>
 
 <div class="note good">
 <p><strong>Selection beat correction — and the gradient-boosted model is how we know.</strong>
 Pooled over every anchor, LightGBM is clearly better than leaving anchors alone (median normalised
-error <strong>0.126</strong> vs <strong>0.150</strong>): it repairs a naive momentum carry by 1.47×
-and last-year's-quarter by 1.45×. But those are the anchors a row is <em>not</em> forecast from. On
-the anchors that actually win selection it is harmful — the seasonal split degrades from
-<strong>0.064 → 0.102</strong> and the guide midpoint from <strong>0.083 → 0.160</strong>. A good
-anchor is already calibrated. The model earns its place in the repository by establishing that,
-not by moving a submitted number.</p>
+error <strong>0.121</strong> vs <strong>0.146</strong>): it repairs last-quarter's-value from
+<strong>0.169 → 0.115</strong> and last-year's-quarter from <strong>0.160 → 0.110</strong>. But those
+are the anchors a row is <em>not</em> forecast from. On the anchors that actually win selection it is
+harmful — the seasonal split degrades from <strong>0.071 → 0.134</strong> and the guide midpoint from
+<strong>0.072 → 0.172</strong>. A good anchor is already calibrated. The model earns its place in the
+repository by establishing that, not by moving a submitted number.</p>
 </div>
 
 <h3>The one deliberate deviation</h3>
@@ -202,16 +209,16 @@ only the guide is shifted.</p>
 
 <table>
 <tr><th>company · metric</th><th class="n">forecast</th><th class="n">prior yr</th><th>anchor used</th><th class="n">σ</th></tr>
-<tr><td>ADI · Revenue (USDm)</td><td class="n">4,008.0</td><td class="n">2,880.4</td><td>guide midpoint + beat</td><td class="n">0.031</td></tr>
+<tr><td>ADI · Revenue (USDm)</td><td class="n">4,009.6</td><td class="n">2,880.4</td><td>guide midpoint + beat</td><td class="n">0.028</td></tr>
 <tr><td>ADI · Adjusted diluted EPS</td><td class="n">3.39</td><td class="n">1.81</td><td>guide midpoint + beat</td><td class="n">0.055</td></tr>
 <tr><td>ADI · Adjusted gross margin (%)</td><td class="n">73.0</td><td class="n">69.2</td><td>last reported quarter</td><td class="n">1.00pp</td></tr>
 <tr><td>DE · Worldwide net sales &amp; revenues (USDm)</td><td class="n">12,588.6</td><td class="n">12,018.0</td><td>year-on-year carry</td><td class="n">0.091</td></tr>
-<tr><td>DE · Diluted EPS (GAAP)</td><td class="n">4.49</td><td class="n">4.75</td><td>FY net-income guide ÷ shares</td><td class="n">0.225</td></tr>
-<tr><td>DE · Production &amp; Precision Ag op. profit (USDm)</td><td class="n">551.0</td><td class="n">580.0</td><td>segment sales guide × margin</td><td class="n">0.195</td></tr>
+<tr><td>DE · Diluted EPS (GAAP)</td><td class="n">4.66</td><td class="n">4.75</td><td>FY guide residual ÷ shares</td><td class="n">0.187</td></tr>
+<tr><td>DE · Production &amp; Precision Ag op. profit (USDm)</td><td class="n">551.0</td><td class="n">580.0</td><td>segment sales guide × margin</td><td class="n">0.175</td></tr>
 <tr><td>HAS · Net fees (GBPm)</td><td class="n">904.3</td><td class="n">972.4</td><td>stated quarterly growth chain</td><td class="n">0.011</td></tr>
 <tr><td>HAS · Pre-exceptional basic EPS (GBp)</td><td class="n">1.31</td><td class="n">1.31</td><td>prior year</td><td class="n">0.115</td></tr>
 <tr><td>HAS · Pre-exceptional operating profit (GBPm)</td><td class="n">45.6</td><td class="n">45.6</td><td>prior year</td><td class="n">0.115</td></tr>
-<tr><td>HD · Net sales (USDm)</td><td class="n">47,082.6</td><td class="n">45,277.0</td><td>FY guide × seasonal share</td><td class="n">0.015</td></tr>
+<tr><td>HD · Net sales (USDm)</td><td class="n">47,082.6</td><td class="n">45,277.0</td><td>FY guide × seasonal share</td><td class="n">0.017</td></tr>
 <tr><td>HD · Adjusted diluted EPS</td><td class="n">4.68</td><td class="n">4.68</td><td>prior year</td><td class="n">0.033</td></tr>
 <tr><td>HD · Comparable sales (%)</td><td class="n">1.0</td><td class="n">1.0</td><td>FY comps guide, direct</td><td class="n">1.55pp</td></tr>
 </table>
@@ -262,10 +269,10 @@ used (0.095 → 0.113 mean score 3.783 → 4.117).</li>
 blending can absorb (3.885 vs 3.783).</li>
 <li><strong>Shrinking the chosen anchor toward the anchor consensus</strong> — tightens the upper
 quartile (0.341 vs 0.363) but costs mean score (3.824 vs 3.783), and mean score is the prize.</li>
-<li><strong>A companion-residual anchor</strong> (guide minus year-to-date, split by remaining
-quarters). Accounting-wise this is the more correct bridge and it was expected to win; measured, it
-is worse (0.274 vs 0.220) because a residual is a difference of two large numbers and amplifies any
-error in the guide.</li>
+<li><strong>A companion-residual anchor</strong> (guide minus year-to-date, split by the remaining
+quarters). First measured as worse than the simpler share route and set aside — then, once fold
+ordering was corrected (below), it won on its own evidence and now carries Deere's diluted EPS. The
+first measurement was made on contaminated timestamps; the idea was right and the evidence was not.</li>
 <li><strong>A macro-regression anchor for HD comparable sales</strong> from the building-materials
 retail tape. Correlation is +0.93, but its median residual is 2.39pp against the existing anchor's
 1.55pp — the correlation is carried by pandemic-era extremes and adds noise in the current regime.</li>
@@ -276,6 +283,19 @@ the same error as the bridges above.</li>
 bound. Deere states three segments' margins in one release with an empty period field, so nothing in
 the row says which segment it belongs to.</li>
 </ul>
+
+<div class="note warn">
+<p><strong>A contaminated backtest clock, found late and worth flagging.</strong> Folds were ordered
+by each figure's <em>latest</em> mention, which is when a value was last restated — and vendor lanes
+stamp their rows with the fetch date. The median gap between a quarter's end and that timestamp was
+<strong>387 days</strong>, with 28% of rows beyond 400 days, so the "expanding window" was partly
+sorted by when data was downloaded rather than published. Re-keyed to the earliest publication,
+floored at the period end, the median gap is <strong>23 days</strong> and 4.7% exceed 400.</p>
+<p>The headline conclusions survived unchanged (adopted strategy 3.745 → 3.742, GBM still worse), so
+the leak was not driving the decision — but two forecasts moved, and the companion-residual anchor
+went from rejected to adopted. It is listed here because a backtest that cannot be trusted on its
+clock cannot be trusted at all, and the fix is the reason to believe the rest.</p>
+</div>
 
 <h2>Known weaknesses</h2>
 
